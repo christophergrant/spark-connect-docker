@@ -1,0 +1,53 @@
+version: '3.8'
+
+networks:
+  cgrant_kafka:
+    name: cgrant_kafka 
+
+services:
+  spark:
+    image: apache/spark:3.5.2-scala2.12-java17-python3-r-ubuntu
+    container_name: spark-connect
+    networks:
+      - cgrant_kafka
+    environment:
+      - SPARK_SUBMIT_OPTS=-Divy.home=/opt/spark/work-dir
+    command: >
+      bash -c "
+      /opt/spark/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_2.12:3.5.2,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.2
+      && sleep infinity
+      "
+    ports:
+      - "4040:4040" # Spark UI port
+      - "15002:15002" # Spark Connect port
+    volumes:
+      - ./work-dir:/opt/spark/work-dir  # Mount volume to persist ivy cache in the work directory
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    container_name: zookeeper
+    networks:
+      - cgrant_kafka
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.0.1
+    container_name: kafka 
+    networks:
+      - cgrant_kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true  # Enable auto-creation of topics
+
