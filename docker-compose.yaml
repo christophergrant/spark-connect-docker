@@ -6,7 +6,7 @@ networks:
 
 services:
   spark:
-    image: apache/spark:3.5.2-scala2.12-java17-python3-r-ubuntu
+    image: apache/spark:3.5.2-scala2.12-java17-ubuntu
     container_name: spark-connect
     networks:
       - cgrant_kafka
